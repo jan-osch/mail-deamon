@@ -1,78 +1,116 @@
 #!/usr/bin/env python3
 
-
 import imaplib
+import os
+import threading
+import yaml
+
 from playsound import playsound
 from time import sleep
-import os
-import email
-from email.parser import HeaderParser
-
-ORG_EMAIL = "@gmail.com"
-FROM_EMAIL = "XXX" + ORG_EMAIL
-FROM_PWD = "PAWSSWORD"
-IMAP_SERVER = "imap.gmail.com"
-SMTP_PORT = 993
-
-seen = set()
 
 
-def read_email_from_gmail():
-    try:
-        mail = imaplib.IMAP4_SSL(IMAP_SERVER)
-        mail.login(FROM_EMAIL, FROM_PWD)
-
-    except imaplib.IMAP4.error as e:
-        print('login failed')
-        print(str(e))
-
-    try:
-        mail.select('inbox')
-        # TODO implement rule set from https://tools.ietf.org/html/rfc3501#section-6.4.4
-        type, data = mail.search(None, 'FROM quora SUBJECT bitcoin UNSEEN')
-        mail_ids = data[0]
-
-        id_list = mail_ids.split()
-        print(id_list)
-        played = False
-        for elem in id_list:
-            if elem not in seen:
-                seen.add(elem)
-
-                rv, data = mail.fetch(elem, 'BODY.PEEK[HEADER.FIELDS (SUBJECT)]')
-                header_data = data[0][1]
-                parser = HeaderParser()
-                msg = parser.parsestr(header_data.decode('ascii'))
-
-                do_notify()
-                if not played:
-                    do_song()
-                    played = True
-
-    except Exception as e:
-        print(str(e))
+def load_configuration():
+    with open('./configuration.yaml', encoding='utf8') as fp:
+        return yaml.load(fp)
 
 
-def do_song():
-    playsound("./completed.wav")
+def check_structure(schema, structure):
+    if isinstance(schema, tuple):  # tuple indicates alternative
+        return any(map(lambda x: check_structure(x, structure), schema))
+    if isinstance(schema, list):
+        return type(structure) == list and \
+               all(map(lambda x: check_structure(schema[0], x), structure))
+    if isinstance(schema, dict):
+        return type(structure) == dict and \
+               all(map(lambda key: check_structure(schema.get(key), structure.get(key)), schema.keys()))
+
+    return isinstance(structure, schema)
 
 
-def do_notify():
-    # Calling the function
-    notify(title='New mail from jmgrzesik@gmail.com',
-           subtitle='with python',
-           message='New mail from jmgrzesik@gmail.com')
+class Rule:
+    def __init__(self, configuration):
+        self.configuration = configuration
+        self.memory = set()
+        self.mail = None
 
+    def start(self):
+        self.log('rule starting')
+        while True:
+            self.execute()
+            sleep(self.configuration['interval'])
 
-# The notifier function
-def notify(title, subtitle, message):
-    t = '-title {!r}'.format(title)
-    s = '-subtitle {!r}'.format(subtitle)
-    m = '-message {!r}'.format(message)
-    os.system('terminal-notifier {}'.format(' '.join([m, t, s])))
+    def log(self, message):
+        print('Rule "{0}": {1}'.format(self.configuration['name'], message))
+
+    def execute(self):
+        self.log("executing rule")
+        try:
+            if self.mail is None:
+                self.mail = self.connect_to_server()
+            _, data = self.mail.search(None, self.configuration['condition'])
+            print(data)
+            self.check_ids(data[0].split())
+
+        except Exception as e:
+            self.log("executing failed reason: {0}".format(e))
+
+    def connect_to_server(self):
+        try:
+            mail = imaplib.IMAP4_SSL(self.configuration['server'])
+            mail.login(self.configuration['account'], self.configuration['password'])
+            mail.select('inbox')
+            self.log('successfully connected to {0}'.format(self.configuration['server']))
+            return mail
+        except imaplib.IMAP4.error as e:
+            raise Exception("Cannot connect to " + self.configuration['server'] + "reason: " + str(e))
+
+    def check_ids(self, ids):
+        for mail_id in ids:
+            if mail_id not in self.memory:
+                self.memory.add(mail_id)
+                self.trigger()
+
+    def trigger(self):
+        for action in self.configuration['actions']:
+            if 'sound' in action.keys():
+                Rule.sound(action.get('sound'))
+            if 'notify' in action.keys():
+                Rule.notify('Mail Deamon', "Rule: " + self.configuration['name'], action.get('notify'))
+
+    @staticmethod
+    def notify(title, subtitle, message):
+        t = '-title {!r}'.format(title)
+        s = '-subtitle {!r}'.format(subtitle)
+        m = '-message {!r}'.format(message)
+        os.system('terminal-notifier {}'.format(' '.join([m, t, s])))
+
+    @staticmethod
+    def sound(file):
+        playsound(file)
 
 
 if __name__ == '__main__':
-    while True:
-        read_email_from_gmail()
-        sleep(30)
+    configs = load_configuration()
+    valid = check_structure([
+        {
+            'name': str,
+            'server': str,
+            'port': int,
+            'account': str,
+            'password': str,
+            'condition': str,
+            'interval': int,
+            'actions': [
+                ({'sound': str}, {'notify': str})
+            ]
+        }
+    ], configs)
+    if not valid:
+        print("Configuration file invalid")
+        exit(1)
+
+    print("Successfully loaded {0} configs".format(len(configs)))
+    for rule_config in configs:
+        rule = Rule(rule_config)
+        t = threading.Thread(target=rule.start)
+        t.start()
