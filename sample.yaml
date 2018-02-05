@@ -1,0 +1,10 @@
+- name: 'Rule name'
+  account: 'XXX'
+  password: 'PWD'
+  server: 'imap.srv.com'
+  port: 993
+  condition: 'B'
+  interval: 60
+  actions:
+    - sound: 'any_sound.wav'
+    - notify: 'your_message'
