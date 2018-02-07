@@ -10,7 +10,11 @@
 ## Create configuration file
 `$ cp sample.yaml configuration.yaml`
 Fill with your email account data.
-For `condition` field use IMAP SEARCH syntax https://tools.ietf.org/html/rfc3501#page-49
+The field `condition` is used to search for messages, it uses sIMAP SEARCH syntax https://tools.ietf.org/html/rfc3501#page-49
+The field `interval` indicates interval of fetching in seconds.
+For the field `actions` you can use a list of actions (as many as you want) to take when new messages are found.
+example: `- sound: 'any_sound.wav'` will play `any_sound.wav` file
+example: `- notify: 'your_message'` will use macOS notification bar with `your_message`
 
 ## Run
 `$ ./main.py`

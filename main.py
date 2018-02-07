@@ -13,17 +13,17 @@ def load_configuration():
         return yaml.load(file_pointer)
 
 
-def check_structure(schema, structure):
+def check_structure(schema, data):
     if isinstance(schema, tuple):  # tuple indicates alternative
-        return any(map(lambda x: check_structure(x, structure), schema))
+        return any(map(lambda x: check_structure(x, data), schema))
     if isinstance(schema, list):
-        return type(structure) == list and \
-               all(map(lambda x: check_structure(schema[0], x), structure))
+        return isinstance(data, list) and \
+               all(map(lambda x: check_structure(schema[0], x), data))
     if isinstance(schema, dict):
-        return type(structure) == dict and \
-               all(map(lambda key: check_structure(schema.get(key), structure.get(key)), schema.keys()))
+        return isinstance(data, dict) and \
+               all(map(lambda key: check_structure(schema.get(key), data.get(key)), schema.keys()))
 
-    return isinstance(structure, schema)
+    return isinstance(data, schema)
 
 
 class Rule:
@@ -49,8 +49,8 @@ class Rule:
             _, data = self.mail.search(None, self.configuration['condition'])
             self.check_ids(data[0].split())
 
-        except Exception as e:
-            self.log("executing failed reason: {0}".format(e))
+        except Exception as error:
+            self.log("executing failed reason: {0}".format(error))
 
     def connect_to_server(self):
         try:
@@ -59,8 +59,8 @@ class Rule:
             mail.select('inbox')
             self.log('successfully connected to {0}'.format(self.configuration['server']))
             return mail
-        except imaplib.IMAP4.error as e:
-            raise Exception("Cannot connect to {0} reason: {1}".format(self.configuration['server'], str(e)))
+        except imaplib.IMAP4.error as error:
+            raise Exception("Cannot connect to {0} reason: {1}".format(self.configuration['server'], str(error)))
 
     def check_ids(self, ids):
         self.log('found: {0} matching emails'.format(len(ids)))
@@ -78,14 +78,15 @@ class Rule:
 
     @staticmethod
     def notify(title, subtitle, message):
-        t = '-title {!r}'.format(title)
-        s = '-subtitle {!r}'.format(subtitle)
-        m = '-message {!r}'.format(message)
-        os.system('terminal-notifier {}'.format(' '.join([m, t, s])))
+        formatted_title = '-title {!r}'.format(title)
+        formatted_subtitle = '-subtitle {!r}'.format(subtitle)
+        formatted_message = '-message {!r}'.format(message)
+        os.system('terminal-notifier {}'.format(' '.join([formatted_message, formatted_title, formatted_subtitle])))
 
     @staticmethod
     def sound(file):
         playsound(file)
+
 
 if __name__ == '__main__':
     configs = load_configuration()
