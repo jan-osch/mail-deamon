@@ -1,7 +1,9 @@
 # Mail Daemon
 
 ## Installation (Currently supports only macOS)
+First install notifier:
 `$ gem install terminal-notifier`
+Then use pip to install required packages:
 `$ pip install -r requirements.txt`
 
 ## Test
