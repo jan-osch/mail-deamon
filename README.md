@@ -13,7 +13,7 @@ Then use pip to install required packages:
 ## Create configuration file
 * First execute `$ cp sample.yaml configuration.yaml`
 * Fill with your email account data.
-* The field `condition` is used to search for messages, it uses sIMAP SEARCH syntax https://tools.ietf.org/html/rfc3501#page-49
+* The field `condition` is used to search for messages, it uses IMAP SEARCH syntax https://tools.ietf.org/html/rfc3501#page-49
 * The field `interval` indicates interval of fetching in seconds.
 * For the field `actions` you can use a list of actions (as many as you want) to take when new messages are found.
 * example: `- sound: 'any_sound.wav'` will play `any_sound.wav` file
