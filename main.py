@@ -3,15 +3,14 @@
 import imaplib
 import os
 import threading
-import yaml
-
-from playsound import playsound
 from time import sleep
+from playsound import playsound
+import yaml
 
 
 def load_configuration():
-    with open('./configuration.yaml', encoding='utf8') as fp:
-        return yaml.load(fp)
+    with open('./configuration.yaml', encoding='utf8') as file_pointer:
+        return yaml.load(file_pointer)
 
 
 def check_structure(schema, structure):
@@ -48,7 +47,6 @@ class Rule:
             if self.mail is None:
                 self.mail = self.connect_to_server()
             _, data = self.mail.search(None, self.configuration['condition'])
-            print(data)
             self.check_ids(data[0].split())
 
         except Exception as e:
@@ -62,9 +60,10 @@ class Rule:
             self.log('successfully connected to {0}'.format(self.configuration['server']))
             return mail
         except imaplib.IMAP4.error as e:
-            raise Exception("Cannot connect to " + self.configuration['server'] + "reason: " + str(e))
+            raise Exception("Cannot connect to {0} reason: {1}".format(self.configuration['server'], str(e)))
 
     def check_ids(self, ids):
+        self.log('found: {0} matching emails'.format(len(ids)))
         for mail_id in ids:
             if mail_id not in self.memory:
                 self.memory.add(mail_id)
@@ -75,7 +74,7 @@ class Rule:
             if 'sound' in action.keys():
                 Rule.sound(action.get('sound'))
             if 'notify' in action.keys():
-                Rule.notify('Mail Deamon', "Rule: " + self.configuration['name'], action.get('notify'))
+                Rule.notify('Mail Daemon', "Rule: " + self.configuration['name'], action.get('notify'))
 
     @staticmethod
     def notify(title, subtitle, message):
@@ -87,7 +86,6 @@ class Rule:
     @staticmethod
     def sound(file):
         playsound(file)
-
 
 if __name__ == '__main__':
     configs = load_configuration()

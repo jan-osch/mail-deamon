@@ -3,7 +3,7 @@
   password: 'PWD'
   server: 'imap.srv.com'
   port: 993
-  condition: 'B'
+  condition: 'UNSEEN'
   interval: 60
   actions:
     - sound: 'any_sound.wav'
